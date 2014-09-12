@@ -103,11 +103,8 @@ timer_sleep (int64_t ticks)
   intr_enable();
 
   thread_current()->wake_time = start + ticks;
-//  printf("putting threads to sleep!\n");
   sema_init(&(thread_current()->wait_sem), 0);
   sema_down(&(thread_current()->wait_sem));
-   //while (timer_elapsed (start) < ticks) 
-   // thread_yield ();
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
