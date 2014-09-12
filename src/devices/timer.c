@@ -96,7 +96,12 @@ timer_sleep (int64_t ticks)
 
   ASSERT (intr_get_level () == INTR_ON);
 
-  list_push_back(&wait_list, &(thread_current()->wait_elem));
+  struct thread* ptr = thread_current();
+
+  intr_disable();
+  list_push_back(&wait_list, &(ptr->wait_elem));
+  intr_enable();
+
   thread_current()->wake_time = start + ticks;
 //  printf("putting threads to sleep!\n");
   sema_init(&(thread_current()->wait_sem), 0);
@@ -190,9 +195,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
   {
      struct thread *th = list_entry(e, struct thread, wait_elem);
 
-     if(timer_ticks () > th->wake_time) {
-//        printf("waking threads!\n");
-	
+     if(timer_ticks () >= th->wake_time) {	
 	list_remove(e);	
      	sema_up(&(th->wait_sem));
      }
