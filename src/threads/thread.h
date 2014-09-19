@@ -93,6 +93,10 @@ struct thread
     struct semaphore wait_sem;
     int wake_time;
 
+    int original_priority;		/* Thread priority before recieving a donor priority */
+    struct list priority_recieving;	/* List of threads donating priority to this thread */
+    struct list priority_giving;	/* List of threads this thread is donating priority to */
+
     struct list_elem wait_elem;
 
     /* Shared between thread.c and synch.c. */
