@@ -30,11 +30,29 @@ Micheal Whitehead	mwhite14@ksu.edu
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+src/devices/timer.c
+static struct list wait_list;
+	Holds the list of waiting threads to be woken up.
+
+src/threads/thread.h
+struct thread
+	defines a thread and all its properties
+	changed - added
+		struct semaphore wait_sem;
+			keeps track of if the thread has been blocked or not
+		struct list_elem wait_elem;
+
+
 
 ---- ALGORITHMS ----
 
 >> A2: Briefly describe what happens in a call to your timer_sleep(),
 >> including the effects of the timer interrupt handler.
+
+	We add the thread to the waiting list, then set the wait_time for the thread.
+	We use a semaphore to block thread, so once the wait time has been set, we initialize the wait_sem to 0, and call sema_down effectively blocking the thread.
+	Each time the timer interrupt is called, it searches the the wait_list for any threads that have a matching wait time and call sema_up on their wait_sems waking them back up.
+
 
 >> A3: What steps are taken to minimize the amount of time spent in
 >> the timer interrupt handler?
@@ -45,6 +63,8 @@ Micheal Whitehead	mwhite14@ksu.edu
 >> A4: How are race conditions avoided when multiple threads call
 >> timer_sleep() simultaneously?
 
+	Each thread has its own wake_time and wait_sem, so there is no writing to a shared variable.
+
 
 >> A5: How are race conditions avoided when a timer interrupt occurs
 >> during a call to timer_sleep()?
@@ -54,6 +74,8 @@ Micheal Whitehead	mwhite14@ksu.edu
 
 >> A6: Why did you choose this design?  In what ways is it superior to
 >> other designs that you considered?
+
+We chose this design because semaphores are a fast way of handling thread_sleeping. Also, the thread handles itself for the most part, eliminating race conditions.
 
 
 
