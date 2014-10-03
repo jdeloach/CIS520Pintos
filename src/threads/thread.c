@@ -339,6 +339,36 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
+/* Returns true if priority A is less than priority B, false otherwise. */
+static bool
+value_less (const struct list_elem *a_, const struct list_elem *b_,
+void *aux UNUSED)
+{
+	const struct thread *a = list_entry (a_, struct thread, elem);
+	const struct thread *b = list_entry (b_, struct thread, elem);
+	printf("priority %d > %d ???", a->priority, b->priority);
+	return (a->priority) < (b->priority);
+}
+
+/* Recomputes the thread priority to the highest priority in priority_recieving list */
+//  set new priority to highest in list or don't change if curr priority is highest
+//  proliferate the change to all threads you priority is donating to (lock_holder)
+//
+void
+recompute_thread_priority(struct thread *t)
+{ 
+  struct thread *max = list_entry (list_max (&t->priority_recieving, value_less, NULL), struct thread, elem);
+  if(max->priority > t->priority)
+  {
+    t->priority = max->priority;
+
+    if(t->lock_holder != NULL)
+    {
+       recompute_thread_priority(&t->lock_holder);       
+    }
+  }
+}
+
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) 

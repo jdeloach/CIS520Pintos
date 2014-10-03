@@ -94,7 +94,7 @@ struct thread
     int wake_time;
 
     struct lock *lock_wanted;
-    struct thread *lock_holder;  	/* who you donate to */
+    struct thread *lock_holder = NULL;  /* who you donate to */
 
     int original_priority;		/* Thread priority before recieving a donor priority */
     struct list priority_recieving;	/* List of threads donating priority to this thread */
@@ -146,6 +146,8 @@ void thread_foreach (thread_action_func *, void *);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
+
+void recompute_thread_priority(struct thread *t);
 
 int thread_get_nice (void);
 void thread_set_nice (int);
