@@ -56,26 +56,29 @@ struct thread
 
 >> A3: What steps are taken to minimize the amount of time spent in
 >> the timer interrupt handler?
-
+	
+	The threads have been given a wake time, and the timer interrupt simply compares that wake time to the current time, and does not do any calculation. It the wakes the thread if thw wake time is equal or greater to the current time.
 
 ---- SYNCHRONIZATION ----
 
 >> A4: How are race conditions avoided when multiple threads call
 >> timer_sleep() simultaneously?
 
-	Each thread has its own wake_time and wait_sem, so there is no writing to a shared variable.
+	We disable interrupts when updating the wait_list, so that we are sure that the wait_list is updated properly.
+	Each thread has its own wake_time and wait_sem, so there is no writing to ant other shared variable, besides wait_list.
 
 
 >> A5: How are race conditions avoided when a timer interrupt occurs
 >> during a call to timer_sleep()?
-
+	
+	As mentioned interrupts are disabled whe updating wait_list, so if it is called during that time nothing happens.
 
 ---- RATIONALE ----
 
 >> A6: Why did you choose this design?  In what ways is it superior to
 >> other designs that you considered?
 
-We chose this design because semaphores are a fast way of handling thread_sleeping. Also, the thread handles itself for the most part, eliminating race conditions.
+	We chose this design because semaphores are a fast way of handling thread_sleeping. We did not have many other design choices, simply because this one worked effectively from the start.
 
 
 
