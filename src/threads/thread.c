@@ -70,6 +70,8 @@ static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
+static void sort_readylist(void);
+void yield_if_necessary(void);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -209,6 +211,8 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  yield_if_necessary();  
+
   return tid;
 }
 
@@ -247,6 +251,7 @@ thread_unblock (struct thread *t)
   ASSERT (t->status == THREAD_BLOCKED);
   list_push_back (&ready_list, &t->elem);
   t->status = THREAD_READY;
+  sort_readylist();
   intr_set_level (old_level);
 }
 
@@ -304,6 +309,21 @@ thread_exit (void)
   NOT_REACHED ();
 }
 
+/* Returns true if priority A is less than priority B, false
+otherwise. */
+bool value_less (const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED)
+{
+  const struct thread *a = list_entry (a_, struct thread, elem);
+  const struct thread *b = list_entry (b_, struct thread, elem);
+  return (a->priority) > (b->priority);
+}
+
+/* sorts the ready list, so that the top priority is at the front of the list */
+static void sort_readylist(void)
+{
+  list_sort(&ready_list, value_less, NULL);
+}
+
 /* Yields the CPU.  The current thread is not put to sleep and
    may be scheduled again immediately at the scheduler's whim. */
 void
@@ -315,8 +335,11 @@ thread_yield (void)
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
-  if (cur != idle_thread) 
+  if (cur != idle_thread) {
     list_push_back (&ready_list, &cur->elem);
+    sort_readylist();
+  }
+  
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -339,11 +362,26 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
+/* calculates if we need to yield thread control after a new thread joins or a priority is altered */
+void yield_if_necessary()
+{
+  // sort the list, make sure we are still top priority else yield
+  sort_readylist();
+  struct thread* max = list_entry(list_front(&ready_list), struct thread, elem);
+  if(max != thread_current()) {
+    if(intr_context())
+       intr_yield_on_return();
+	else
+       thread_yield();
+  }
+}
+
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+  yield_if_necessary();
 }
 
 /* Returns the current thread's priority. */
