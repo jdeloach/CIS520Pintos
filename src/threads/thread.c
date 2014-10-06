@@ -362,6 +362,7 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
+
 /* calculates if we need to yield thread control after a new thread joins or a priority is altered */
 void yield_if_necessary()
 {
@@ -373,6 +374,25 @@ void yield_if_necessary()
        intr_yield_on_return();
 	else
        thread_yield();
+    }
+}
+
+/* Recomputes the thread priority to the highest priority in priority_recieving list */
+//  set new priority to highest in list or don't change if curr priority is highest
+//  proliferate the change to all threads you priority is donating to (lock_holder)
+//
+void
+recompute_thread_priority(struct thread *t)
+{ 
+  struct thread *max = list_entry (list_max (&t->priority_recieving, value_less, NULL), struct thread, elem);
+  if(max->priority > t->priority)
+  {
+    t->priority = max->priority;
+
+    if(t->lock_holder != NULL)
+    {
+       recompute_thread_priority(&t->lock_holder);       
+    }
   }
 }
 
