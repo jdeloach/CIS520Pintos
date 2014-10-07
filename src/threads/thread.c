@@ -391,7 +391,7 @@ recompute_thread_priority(struct thread *t)
 
     if(t->lock_holder != NULL)
     {
-       recompute_thread_priority(&t->lock_holder);       
+       recompute_thread_priority(t->lock_holder);       
     }
   }
 }

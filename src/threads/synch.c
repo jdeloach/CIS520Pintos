@@ -201,7 +201,8 @@ lock_acquire (struct lock *lock)
 
   struct thread *donor = thread_current ();
   donor->original_priority = donor->priority;
-
+  donor->lock_holder = lock->holder;
+  
   if(lock->holder != NULL)
   {
     donor->lock_wanted = lock;
@@ -209,7 +210,7 @@ lock_acquire (struct lock *lock)
     
     list_push_back(&lock->holder->priority_recieving, &donor->recieving_elem ); 
 
-    recompute_thread_priority(&lock->holder);
+    recompute_thread_priority(lock->holder);
   }
   else{
     sema_down (&lock->semaphore);
