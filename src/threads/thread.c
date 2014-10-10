@@ -441,7 +441,10 @@ set_max(struct thread *t_curr)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
+  if(list_empty(&thread_current()->priority_recieving)){
+  	thread_current()->priority = new_priority;
+  }
+  thread_current ()->original_priority = new_priority;
   yield_if_necessary();
 }
 

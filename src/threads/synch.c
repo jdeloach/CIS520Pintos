@@ -119,8 +119,8 @@ sema_up (struct semaphore *sema)
                                 struct thread, elem));
   }
   sema->value++;
-  yield_if_necessary();
   intr_set_level (old_level);
+  yield_if_necessary();
 }
 
 static void sema_test_helper (void *sema_);
