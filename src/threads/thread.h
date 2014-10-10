@@ -93,13 +93,13 @@ struct thread
     struct semaphore wait_sem;
     int wake_time;
 
-    struct lock *lock_wanted;
+	struct lock *lock_wanted;
     struct thread *lock_holder;  /* who you donate to */
+	struct thread *parent;		/* who is donating you priority */
 
     int original_priority;		/* Thread priority before recieving a donor priority */
     struct list priority_recieving;	/* List of threads donating priority to this thread */
     
-
     struct list_elem recieving_elem;
     struct list_elem giving_elem;
     struct list_elem wait_elem;
@@ -147,7 +147,10 @@ void thread_foreach (thread_action_func *, void *);
 int thread_get_priority (void);
 void thread_set_priority (int);
 
-void recompute_thread_priority(struct thread *t);
+void recompute_thread_priority(struct thread *t, int p);
+void set_max(struct thread *t_curr);
+
+void donate_priority(struct thread *t , int p);
 
 int thread_get_nice (void);
 void thread_set_nice (int);

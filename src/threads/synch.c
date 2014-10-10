@@ -200,22 +200,19 @@ lock_acquire (struct lock *lock)
   ASSERT (!lock_held_by_current_thread (lock));
 
   struct thread *donor = thread_current ();
-  donor->original_priority = donor->priority;
-  donor->lock_holder = lock->holder;
-  
   if(lock->holder != NULL)
   {
-    donor->lock_wanted = lock;
     donor->lock_holder = lock->holder;
-    
-    list_push_back(&lock->holder->priority_recieving, &donor->recieving_elem ); 
-
-    recompute_thread_priority(lock->holder);
+    donor->lock_wanted = lock;
+	
+    list_push_front(&lock->holder->priority_recieving, &donor->recieving_elem );
+	
+	recompute_thread_priority(donor, donor->priority);
   }
-  else{
-    sema_down (&lock->semaphore);
-    lock->holder = thread_current ();
-  }
+  
+  sema_down (&lock->semaphore);
+  lock->holder = thread_current ();
+  donor->lock_wanted = NULL;
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -233,8 +230,11 @@ lock_try_acquire (struct lock *lock)
   ASSERT (!lock_held_by_current_thread (lock));
 
   success = sema_try_down (&lock->semaphore);
-  if (success)
+  if (success){
+	thread_current ()->lock_wanted = NULL;
+	thread_current ()->lock_holder = NULL;
     lock->holder = thread_current ();
+  }
   return success;
 }
 
@@ -247,8 +247,13 @@ void
 lock_release (struct lock *lock) 
 {
   ASSERT (lock != NULL);
-  ASSERT (lock_held_by_current_thread (lock));
-  lock->holder->priority = lock->holder->original_priority;
+  //ASSERT (lock_held_by_current_thread (lock));
+  
+  if (!list_empty (&lock->semaphore.waiters)){
+	
+	//set_max(thread_current());   
+	
+  }
   lock->holder = NULL;
   sema_up (&lock->semaphore);
 }

@@ -72,6 +72,7 @@ void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 static void sort_readylist(void);
 void yield_if_necessary(void);
+void donate_priority(struct thread *t, int p);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -94,6 +95,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -377,24 +379,61 @@ void yield_if_necessary()
     }
 }
 
+void
+donate_priority(struct thread *t, int p)
+{
+	while(t != NULL)
+	{
+		if(t->priority < p)
+		{
+			t->priority = p;
+		}	
+		t = t->lock_holder;
+	}
+}
+
 /* Recomputes the thread priority to the highest priority in priority_recieving list */
 //  set new priority to highest in list or don't change if curr priority is highest
 //  proliferate the change to all threads you priority is donating to (lock_holder)
 //
 void
-recompute_thread_priority(struct thread *t)
+recompute_thread_priority(struct thread *t, int p)
 { 
-  struct thread *max = list_entry (list_max (&t->priority_recieving, value_less, NULL), struct thread, elem);
-  if(max->priority > t->priority)
+  	
+  if(p > t->lock_holder->priority)
   {
-    t->priority = max->priority;
-
-    if(t->lock_holder != NULL)
+	printf("L Holder P = %d\n", t->lock_holder->priority);
+	printf("P P = %d\n", p);
+    t->lock_holder->priority = p;
+	t->lock_holder->parent = t;
+    if(t->lock_holder->lock_holder != NULL)
     {
-       recompute_thread_priority(t->lock_holder);       
+      donate_priority(t->lock_holder->lock_holder, p);       
     }
   }
 }
+
+void
+set_max(struct thread *t_curr)
+{
+	if(!list_empty (&t_curr->priority_recieving)){	list_remove(&t_curr->parent->recieving_elem); }
+
+	t_curr->parent->lock_holder = NULL;
+	t_curr->parent->lock_wanted = NULL;
+	t_curr->parent = NULL;
+
+	if(!list_empty (&t_curr->priority_recieving)){
+		
+		struct thread *max = list_entry (list_max (&t_curr->priority_recieving, value_less, NULL), struct thread, recieving_elem);
+		if(max->priority > t_curr->priority){
+			t_curr->parent = max;
+			t_curr->priority = max->priority;
+		}
+		donate_priority(t_curr->lock_holder, t_curr->priority);
+	}
+	else{ t_curr->priority = t_curr->original_priority; }
+}
+
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
@@ -522,12 +561,18 @@ init_thread (struct thread *t, const char *name, int priority)
   ASSERT (name != NULL);
 
   memset (t, 0, sizeof *t);
+  
   t->status = THREAD_BLOCKED;
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
-  t->priority = priority;
+  t->priority = priority;  
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
+  t->parent = NULL;
+  t->lock_holder = NULL;
+  t->lock_wanted = NULL;
+  t->original_priority = priority;
+  list_init (&t->priority_recieving);
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
