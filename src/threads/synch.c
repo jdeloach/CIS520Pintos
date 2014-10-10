@@ -324,6 +324,28 @@ cond_init (struct condition *cond)
   list_init (&cond->waiters);
 }
 
+/* Returns true if value A is bigger than value B, false
+   otherwise. */
+static bool
+cond_sorter (const struct list_elem *a_, const struct list_elem *b_,
+            void *aux UNUSED) 
+{
+  const struct semaphore_elem *a = list_entry (a_, struct semaphore_elem, elem);
+  const struct semaphore_elem *b = list_entry (b_, struct semaphore_elem, elem);
+  struct semaphore* cA = &a->semaphore;
+  struct semaphore* cB = &b->semaphore;  
+
+  if(list_empty(&cA->waiters))
+    return false;
+  if(list_empty(&cB->waiters))
+    return true;
+
+  struct thread* t0 = list_entry (list_begin (&cA->waiters), struct thread, elem);
+  struct thread* t1 = list_entry (list_begin (&cB->waiters), struct thread, elem);
+
+  return t0->priority > t1->priority;
+}
+
 /* Atomically releases LOCK and waits for COND to be signaled by
    some other piece of code.  After COND is signaled, LOCK is
    reacquired before returning.  LOCK must be held before calling
@@ -377,8 +399,9 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
   ASSERT (lock_held_by_current_thread (lock));
 
   if (!list_empty (&cond->waiters)) { 
-    list_sort(&cond->waiters, value_less, NULL);
-    sema_up (&list_entry (list_pop_front (&cond->waiters),
+      list_sort(&cond->waiters, &cond_sorter,
+		NULL);
+      sema_up (&list_entry (list_pop_front (&cond->waiters),
                           struct semaphore_elem, elem)->semaphore);
    }
 }
