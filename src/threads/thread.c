@@ -370,15 +370,15 @@ void yield_if_necessary()
 {
   // sort the list, make sure we are still top priority else yield
   if(!list_empty(&ready_list)){
-  sort_readylist();
-  struct thread* max = list_entry(list_front(&ready_list), struct thread, elem);
-  if(max != thread_current()) {
-    if(intr_context())
-       intr_yield_on_return();
-	else
-       thread_yield();
-    }
-    }
+	  sort_readylist();
+	  struct thread* max = list_entry(list_front(&ready_list), struct thread, elem);
+	  if(max != thread_current()) {
+	    if(intr_context())
+	       intr_yield_on_return();
+	    else
+	       thread_yield();
+	    }
+  }
 }
 
 void
@@ -404,38 +404,14 @@ recompute_thread_priority(struct thread *t, int p)
   	
   if(p > t->lock_holder->priority)
   {
-	//printf("L Holder P = %d\n", t->lock_holder->priority);
-	//printf("P P = %d\n", p);
-    	t->lock_holder->priority = p;
-	t->lock_holder->parent = t;
+    t->lock_holder->priority = p;
+    t->lock_holder->parent = t;
     if(t->lock_holder->lock_holder != NULL)
     {
       donate_priority(t->lock_holder->lock_holder, p);       
     }
   }
 }
-
-void
-set_max(struct thread *t_curr)
-{
-	if(!list_empty (&t_curr->priority_recieving)){	list_remove(&t_curr->parent->recieving_elem); }
-
-	t_curr->parent->lock_holder = NULL;
-	t_curr->parent->lock_wanted = NULL;
-	t_curr->parent = NULL;
-
-	if(!list_empty (&t_curr->priority_recieving)){
-		
-		struct thread *max = list_entry (list_max (&t_curr->priority_recieving, value_less, NULL), struct thread, recieving_elem);
-		if(max->priority > t_curr->priority){
-			t_curr->parent = max;
-			t_curr->priority = max->priority;
-		}
-		donate_priority(t_curr->lock_holder, t_curr->priority);
-	}
-	else{ t_curr->priority = t_curr->original_priority; }
-}
-
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
