@@ -113,7 +113,7 @@ sema_up (struct semaphore *sema)
   ASSERT (sema != NULL);
   old_level = intr_disable ();
   if (!list_empty (&sema->waiters)) {
-  // sort the list, then unblock the top priority
+    // sort the list, then unblock the top priority
     list_sort(&sema->waiters, value_less, NULL);
     thread_unblock (list_entry (list_pop_front (&sema->waiters),
                                 struct thread, elem));
@@ -208,10 +208,8 @@ lock_acquire (struct lock *lock)
     donor->lock_wanted = lock;
 	
     list_push_front(&lock->holder->priority_recieving, &donor->recieving_elem );
-	
-	recompute_thread_priority(donor, donor->priority);
+    recompute_thread_priority(donor, donor->priority);
   }
-  //msg("about to block for the lock acquire"); 
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
   donor->lock_wanted = NULL;
@@ -253,46 +251,41 @@ lock_release (struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
   enum intr_level old_level = intr_disable();
 
+  // if someone wants 
   if (!list_empty (&lock->semaphore.waiters)){
-	
-	//set_max(thread_current());   
-	// remove guys that are no longer valid
-	struct list_elem *e = list_begin(&thread_current()->priority_recieving);
-	  struct list_elem *next;
-	    while (e != list_end(&thread_current()->priority_recieving))
-	        {
-		struct thread *t = list_entry(e, struct thread, recieving_elem);
-		next = list_next(e);
-		if (t->lock_wanted == lock)
-		{
-			list_remove(e);
-		}
-			e = next;	
+    // remove threads who were listening for this lock
+		struct list_elem* e = list_begin(&thread_current()->priority_recieving);
+		struct list_elem* next;
+		while (e != list_end(&thread_current()->priority_recieving)) {
+			struct thread* t = list_entry(e, struct thread, recieving_elem);
+			next = list_next(e);
+			if (t-> lock_wanted == lock) {
+				list_remove(e);
+			}
+			e = next;
 		}
 
-	// now recompute who really cares about us
+		// now recompute, e.g. set our thread back down, and let it go where it should be
+		struct thread* t = thread_current();
+		t->priority = t->original_priority;
+		if (list_empty(&t->priority_recieving)) { // no one is donating anymore, be done
+			lock->holder = NULL;
+			sema_up(&lock->semaphore);
+			intr_set_level(old_level);
+			return;
+		}
 
-	struct thread *t = thread_current();
-	t->priority = t->original_priority;
-	if (list_empty(&t->priority_recieving))
-	{
-lock->holder = NULL;
-sema_up(&lock->semaphore);
-intr_set_level(old_level);
-	return;
-	}
-	struct thread *s = list_entry(list_front(&t->priority_recieving),
-			struct thread, recieving_elem);
-			if (s->priority > t->priority)
-			{
+		// set our priority our new max donor, if higher
+		struct thread* s = list_entry(list_front(&t->priority_recieving), struct thread, recieving_elem);
+		if (s->priority > t->priority) {
 			t->priority = s->priority;
+		}
+	}
 
-
-  	} }
+  // no one is listening, disown and release our control
   lock->holder = NULL;
   sema_up (&lock->semaphore);
   intr_set_level(old_level);
-  //printf("just finished release my Priority");
 }
 
 /* Returns true if the current thread holds LOCK, false
