@@ -86,12 +86,39 @@ struct thread
 
 ---- DATA STRUCTURES ----
 
+---- DATA STRUCTURES ----
+
 >> B1: Copy here the declaration of each new or changed `struct' or
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+thread.h
+    struct lock *lock_wanted;
+    	Lock that this thread is attempting to acquire.
+    
+    struct thread *lock_holder;
+    	The thread who you donate your priority to.
+	
+    int original_priority;
+    	Your "true" priority, before receiving any donations. Will return to this value when no longer 
+    	holding any important locks.
+    	
+    struct list priority_recieving;
+    	The list of threads donating to this thread.
+    
+    struct list_elem recieving_elem;
+    	Element for the list where this thread is donating to another thread.
+
 >> B2: Explain the data structure used to track priority donation.
 
+	The most significant data structure used to track priority donation is each threads list from 
+	whom it receives donations. The two primary interactions with this structure is when a lock is 
+	trying to be acquired, and released. When a lock is attempting to be acquired, the current thread 
+	gets added to the list and becomes a "donor" to the thread owning the lock. Eventually, once the 
+	lock owner, and any higher-priority-waiters get the lock, and the thread gets the lock, it will 
+	use the resource and then release. In release, the lock is released, priorities are returned to 
+	their thread owners, and the lock is then given on to the next highest priority, as determined 
+	through the receiving list.
 
 ---- ALGORITHMS ----
 
