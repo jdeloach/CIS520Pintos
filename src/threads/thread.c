@@ -417,10 +417,12 @@ recompute_thread_priority(struct thread *t, int p)
 void
 thread_set_priority (int new_priority) 
 {
+  enum intr_level old_level = intr_disable();
   if(list_empty(&thread_current()->priority_recieving)){
   	thread_current()->priority = new_priority;
   }
   thread_current ()->original_priority = new_priority;
+  intr_set_level(old_level);
   yield_if_necessary();
 }
 

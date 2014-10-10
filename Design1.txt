@@ -86,8 +86,6 @@ struct thread
 
 ---- DATA STRUCTURES ----
 
----- DATA STRUCTURES ----
-
 >> B1: Copy here the declaration of each new or changed `struct' or
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
@@ -139,10 +137,34 @@ thread.h
 >> B4: Describe the sequence of events when a call to lock_acquire()
 >> causes a priority donation.  How is nested donation handled?
 
-
+	When a thread makes a call to lock_acquire() the following occurs:
+		
+		1. Assert that the lock exists, it is not in an interrupt context, and it is not already held by itself.
+		2. Disable interrupts
+		3. Check that the lock is currently available
+		4. If the lock is currently held (not available):
+			a. The current thread (thread trying to acquire the lock) saves who has the lock and which lock it wants.
+			b. The current thread then adds itself to the lock holder's donor list (priority_recieving)
+			c. The lock holder's priority then gets recomputed as needed (i.e. if the donor has a greater priority, the lock holder gets set to that priority)
+		5. The current thread then sema_downs on the e lock's semaphore, and either gets blocked or acquires the lock.
+		6. Once the thread acquires the lock it sets itself as the lock holder and clears what lock it wants.
+		7. Enable interrupts
 
 >> B5: Describe the sequence of events when lock_release() is called
 >> on a lock that a higher-priority thread is waiting for.
+
+	When a thread makes a call to lock_release() the following occurs:
+
+ 		1. Assert that the lock exists and that itself is the current lock holder.
+		2. Disable interrupts
+		3. If the lock's semaphore waiting list is not empty:
+			a. Remove the threads waiting on the lock from the current thread's (thread releasing the lock) donor list.
+			b. Recompute the current thread's priority:
+				 i. Set to either the next highest priority in the donor list
+				ii. Or if there is no one in the donor list -> set back to base priority
+		4. The current thread then releases the lock by clearing the lock holder, signaling the lock's semaphore. When the semaphore is signaled, the thread yields if there is a higher priority thread ready to run.
+		5. Enable interrupts
+		
 
 ---- SYNCHRONIZATION ----
 
@@ -150,11 +172,24 @@ thread.h
 >> how your implementation avoids it.  Can you use a lock to avoid
 >> this race?
 
+	There is a potential race condition when calling thread_set_priority when updating the thread's priority, and original priority.	
+	We disable interrupts inside this function when the priority information is being updated to prevent this from happening.
+
+	It would depend on how the lock is implemented. Using a lock in this case would added extra overhead, which is eliminated by simply disabling interrupts.
+
 ---- RATIONALE ----
 
 >> B7: Why did you choose this design?  In what ways is it superior to
 >> another design you considered?
 
+	Our design allows us to leverage much of the functionality which is already a part of the Pintos system.
+	We are mainly adding sorting to many of the lists which are already maintained to keep track of priority.
+	Priority donation posed a bit more of a challenge however. The design we chose has the thread keep track of who it is recieving priority from, who it needs a lock from, and which lock it wants.
+	The lock just keeps track of who has it. This allows for the least amount of overhead, as we can map out dependencies based on this information, and really only have one list to keep track of per thread.
+
+	This was the most natural development, and we did not consider very many other designs in regards to keeping track of the highest priority.
+	We could have simply selected the max element from the list, but that also involves sorting, so this design is simpler to keep track of.
+	We also considered having the thread track who it had donated priority to, but that was not necessary
 
               ADVANCED SCHEDULER [EXTRA CREDIT]
               =================================
