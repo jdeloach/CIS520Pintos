@@ -369,6 +369,7 @@ thread_foreach (thread_action_func *func, void *aux)
 void yield_if_necessary()
 {
   // sort the list, make sure we are still top priority else yield
+  if(!list_empty(&ready_list)){
   sort_readylist();
   struct thread* max = list_entry(list_front(&ready_list), struct thread, elem);
   if(max != thread_current()) {
@@ -376,6 +377,7 @@ void yield_if_necessary()
        intr_yield_on_return();
 	else
        thread_yield();
+    }
     }
 }
 
@@ -402,9 +404,9 @@ recompute_thread_priority(struct thread *t, int p)
   	
   if(p > t->lock_holder->priority)
   {
-	printf("L Holder P = %d\n", t->lock_holder->priority);
-	printf("P P = %d\n", p);
-    t->lock_holder->priority = p;
+	//printf("L Holder P = %d\n", t->lock_holder->priority);
+	//printf("P P = %d\n", p);
+    	t->lock_holder->priority = p;
 	t->lock_holder->parent = t;
     if(t->lock_holder->lock_holder != NULL)
     {
