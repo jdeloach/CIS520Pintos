@@ -237,24 +237,22 @@ sys_open (const char *ufile)
   fd = malloc (sizeof *fd);
   if (fd != NULL)
     {
+      printf("Printf mush be outside lock\n");
       lock_acquire (&fs_lock);
-      printf("trying to fs open :D");
       fd->file = filesys_open (kfile);
-      printf("fs'd open :D\n");
       if (fd->file != NULL)
         {
           struct thread *cur = thread_current ();
           handle = fd->handle = cur->next_handle++;
           list_push_front (&cur->fds, &fd->elem);
-  //    printf("inside\n");
         }
       else 
         free (fd);
       lock_release (&fs_lock);
-    //  printf("lock released\n");
+    //printf("lock released\n");
     }
   palloc_free_page (kfile);
-//  printf("opened filed\n");
+  //printf("opened filed\n");
   return handle;
 }
  
