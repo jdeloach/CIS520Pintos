@@ -237,7 +237,6 @@ sys_open (const char *ufile)
   fd = malloc (sizeof *fd);
   if (fd != NULL)
     {
-      printf("Printf mush be outside lock\n");
       lock_acquire (&fs_lock);
       fd->file = filesys_open (kfile);
       if (fd->file != NULL)
@@ -249,10 +248,8 @@ sys_open (const char *ufile)
       else 
         free (fd);
       lock_release (&fs_lock);
-    //printf("lock released\n");
-    }
+   }
   palloc_free_page (kfile);
-  //printf("opened filed\n");
   return handle;
 }
  

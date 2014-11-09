@@ -120,8 +120,7 @@ start_process (void *exec_)
 static void
 release_child (struct wait_status *cs) 
 {
-  int new_ref_cnt;
-  
+  int new_ref_cnt;  
   lock_acquire (&cs->lock);
   new_ref_cnt = --cs->ref_cnt;
   lock_release (&cs->lock);
@@ -139,23 +138,21 @@ release_child (struct wait_status *cs)
 int
 process_wait (tid_t child_tid) 
 { 
-// assuming we added the child processes wait_status to the parent thread's wait_status_list on create
- 
   struct thread *cur = thread_current ();
-//  forech wait_status status in cur->wait_status list{
-//		if( status->tid = child_tid)
-//		{
-//			if(status_tef_cnt < 2)	return -1;
-//			else
-//			{
-//				lock_acquire(&status->lock);
-//				status->ref_cnt = status->ref_cnt - 1;
-//				lock_release(&status->lock);
-//				sema_down(status->dead);		// waits for child to complete
-//				return status->exit_code;
-//			}
-//		}				
-//  }
+  struct list_elem *elem;
+  for (elem = list_begin (&cur->children); elem != list_end (&cur->children);
+       elem = list_next (elem)) 
+    {
+      struct wait_status *child_wstatus = list_entry (elem, struct wait_status, elem);
+      if (child_wstatus->tid == child_tid) 
+        {
+       	  list_remove (elem);
+          sema_down (&child_wstatus->dead);
+          int code = child_wstatus->exit_code;
+          release_child (child_wstatus);
+          return code;
+        }
+    }
   return -1;
 }
 
@@ -175,7 +172,7 @@ process_exit (void)
     {
       struct wait_status *cs = cur->wait_status;
 
-      /* add code */
+      sema_up(&cs->dead);
       printf ("%s: exit(0)\n", cur->name); // HACK all successful ;-)
 
       release_child (cs);
