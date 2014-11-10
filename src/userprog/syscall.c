@@ -208,7 +208,13 @@ sys_wait (tid_t child)
 static int
 sys_create (const char *ufile, unsigned initial_size) 
 {
-  return 0;
+  int result;
+  char *kfile = copy_in_string (ufile);
+  lock_acquire(&fs_lock);
+  result = filesys_create(kfile, initial_size);
+  lock_release(&fs_lock);
+  palloc_free_page(kfile);
+  return result;
 }
  
 /* Remove system call. */
@@ -260,6 +266,16 @@ static struct file_descriptor *
 lookup_fd (int handle)
 {
 /* Add code to lookup file descriptor in the current thread's fds */
+  struct thread *cur = thread_current ();
+  struct list_elem *elem;
+  for (elem = list_begin (&cur->fds); elem != list_end (&cur->fds);
+       elem = list_next (elem)) 
+    {
+      struct file_descriptor *fd = list_entry (elem, struct file_descriptor, elem);
+      if(fd->handle == handle)
+        return fd;
+    }
+
   thread_exit ();
 }
  
@@ -267,16 +283,27 @@ lookup_fd (int handle)
 static int
 sys_filesize (int handle) 
 {
-/* Add code */
-  thread_exit ();
+  struct file_descriptor *fd = lookup_fd(handle);
+  return file_length(fd->file);
 }
  
 /* Read system call. */
 static int
 sys_read (int handle, void *udst_, unsigned size) 
 {
-/* Add code */
-  thread_exit ();
+  if(handle == 0) {
+    int i;
+    char* buf = (char *) udst_;
+    for(i = 0; i < size; i++) {
+	buf[i] = input_getc();
+    }
+    return i;
+  }
+ 
+  struct file_descriptor *fd = lookup_fd(handle);
+  if(!fd)
+    return -1;
+  return file_read(fd->file, udst_, size);
 }
  
 /* Write system call. */
@@ -355,8 +382,19 @@ sys_tell (int handle)
 static int
 sys_close (int handle) 
 {
-/* Add code */
-  thread_exit ();
+/* loop through cur, find handle w/ int, then do a file_close(handle_struct) */
+
+  struct thread *cur = thread_current ();
+  struct list_elem *elem;
+  for (elem = list_begin (&cur->fds); elem != list_end (&cur->fds);
+       elem = list_next (elem)) 
+    {
+      struct file_descriptor *fd = list_entry (elem, struct file_descriptor, elem);
+      if(fd->handle == handle) {
+        file_close(fd->file); 
+        list_remove(elem);
+      }
+    }
 }
  
 /* On thread exit, close all open files. */
