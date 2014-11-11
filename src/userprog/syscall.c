@@ -30,7 +30,8 @@ static int sys_close (int handle);
  
 static void syscall_handler (struct intr_frame *);
 static void copy_in (void *, const void *, size_t);
- 
+void validate_ptr(const void* uptr);
+
 /* Serializes file system operations. */
 static struct lock fs_lock;
  
@@ -203,11 +204,23 @@ sys_wait (tid_t child)
 /* Add code */
   thread_exit ();
 }
- 
+
+void validate_ptr (const void *uptr)
+{
+  if(!is_user_vaddr(uptr) || uptr < ((void *) 0x08048000))
+    sys_exit(-1);
+
+  void *ptr = pagedir_get_page(thread_current()->pagedir, uptr);
+  if(!ptr)
+    sys_exit(-1);
+}
+
 /* Create system call. */
 static int
 sys_create (const char *ufile, unsigned initial_size) 
 {
+  validate_ptr(ufile);
+
   int result;
   char *kfile = copy_in_string (ufile);
   lock_acquire(&fs_lock);
@@ -236,8 +249,8 @@ struct file_descriptor
 static int
 sys_open (const char *ufile) 
 {
+  validate_ptr(ufile);
   char *kfile = copy_in_string (ufile);
-	//printf("kfile: '%s'", ufile);
   struct file_descriptor *fd;
   int handle = -1;
   fd = malloc (sizeof *fd);
@@ -291,6 +304,8 @@ sys_filesize (int handle)
 static int
 sys_read (int handle, void *udst_, unsigned size) 
 {
+  validate_ptr(udst_);
+
   if(handle == 0) {
     int i;
     char* buf = (char *) udst_;
@@ -310,6 +325,7 @@ sys_read (int handle, void *udst_, unsigned size)
 static int
 sys_write (int handle, void *usrc_, unsigned size) 
 {
+  validate_ptr(usrc_);
   uint8_t *usrc = usrc_;
   struct file_descriptor *fd = NULL;
   int bytes_written = 0;
