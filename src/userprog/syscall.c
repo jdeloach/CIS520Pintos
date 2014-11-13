@@ -213,7 +213,6 @@ sys_exec (const char *ucmd_line)
       
       return pid; // done, ret
    }
-
   return -1;
 }
  
@@ -285,6 +284,7 @@ sys_open (const char *ufile)
     {
       lock_acquire (&fs_lock);
       fd->file = filesys_open (kfile);
+      lock_release(&fs_lock);
       if (fd->file != NULL)
         {
           struct thread *cur = thread_current ();
@@ -293,7 +293,6 @@ sys_open (const char *ufile)
         }
       else 
         free (fd);
-      lock_release (&fs_lock);
    }
   palloc_free_page (kfile);
   return handle;
@@ -345,7 +344,10 @@ sys_read (int handle, void *udst_, unsigned size)
   struct file_descriptor *fd = lookup_fd(handle);
   if(!fd)
     return -1;
-  return file_read(fd->file, udst_, size);
+  lock_acquire(&fs_lock);
+  int ret = file_read(fd->file, udst_, size);
+  lock_release(&fs_lock);
+  return ret;
 }
  
 /* Write system call. */
