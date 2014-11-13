@@ -527,7 +527,12 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static void
 reverse (int argc, char **argv) 
 {
-   /* add code */
+   for (; argc > 1; argc -= 2, argv += 1) 
+   {
+     char *swp = argv[0];
+     argv[0] = argv[argc - 1];
+     argv[argc - 1] = swp;
+   }
 
    return;
 }
