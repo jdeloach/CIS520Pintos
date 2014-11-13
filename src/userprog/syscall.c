@@ -136,6 +136,8 @@ put_user (uint8_t *udst, uint8_t byte)
 static void
 copy_in (void *dst_, const void *usrc_, size_t size) 
 {
+  validate_ptr(usrc_);
+
   uint8_t *dst = dst_;
   const uint8_t *usrc = usrc_;
  
@@ -191,18 +193,35 @@ sys_exit (int exit_code)
  
 /* Exec system call. */
 static int
-sys_exec (const char *ufile) 
+sys_exec (const char *ucmd_line) 
 {
-/* Add code */
-  thread_exit ();
+  validate_ptr(ucmd_line);
+  char* kcmd_line = copy_in_string(ucmd_line);
+  struct thread* cur = thread_current();
+  struct list_elem* elem;
+  tid_t pid = process_execute(kcmd_line);
+  
+  for (elem = list_begin (&cur->children); elem != list_end (&cur->children);
+         elem = list_next (elem))
+  {
+    struct wait_status *ws = list_entry (elem, struct wait_status, elem);
+    if(ws->tid == pid)
+      do {
+        thread_yield();
+      }
+      while (ws->ref_cnt != 2);
+      
+      return pid; // done, ret
+   }
+
+  return -1;
 }
  
 /* Wait system call. */
 static int
 sys_wait (tid_t child) 
 {
-/* Add code */
-  thread_exit ();
+  process_wait(child);
 }
 
 void validate_ptr (const void *uptr)
@@ -234,7 +253,15 @@ sys_create (const char *ufile, unsigned initial_size)
 static int
 sys_remove (const char *ufile) 
 {
-/* Add code */
+  validate_ptr(ufile);
+
+  int result;
+  char *kfile = copy_in_string(ufile);
+  lock_acquire(&fs_lock);
+  result = filesys_remove(kfile);
+  lock_release(&fs_lock);
+  palloc_free_page(kfile);
+  return result;
 }
  
 /* A file descriptor, for binding a file handle to a file. */
@@ -382,16 +409,16 @@ sys_write (int handle, void *usrc_, unsigned size)
 static int
 sys_seek (int handle, unsigned position) 
 {
-/* Add code */
-  thread_exit ();
+  struct file_descriptor* fd = lookup_fd(handle);
+  file_seek(fd->file, position);
 }
  
 /* Tell system call. */
 static int
 sys_tell (int handle) 
 {
-/* Add code */
-  thread_exit ();
+  struct file_descriptor* fd = lookup_fd(handle);
+  file_tell(fd->file);
 }
  
 /* Close system call. */
