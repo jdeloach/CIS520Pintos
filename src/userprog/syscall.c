@@ -360,10 +360,11 @@ sys_write (int handle, void *usrc_, unsigned size)
   int bytes_written = 0;
 
   /* Lookup up file descriptor. */
+  lock_acquire (&fs_lock);
   if (handle != STDOUT_FILENO)
     fd = lookup_fd (handle);
+  lock_release (&fs_lock);
 
-  lock_acquire (&fs_lock);
   while (size > 0) 
     {
       /* How much bytes to write to this page? */
@@ -374,11 +375,11 @@ sys_write (int handle, void *usrc_, unsigned size)
       /* Check that we can touch this user page. */
       if (!verify_user (usrc)) 
         {
-          lock_release (&fs_lock);
           thread_exit ();
         }
 
       /* Do the write. */
+      lock_acquire(&fs_lock);
       if (handle == STDOUT_FILENO)
         {
           putbuf (usrc, write_amt);
@@ -393,7 +394,7 @@ sys_write (int handle, void *usrc_, unsigned size)
           break;
         }
       bytes_written += retval;
-
+      lock_release(&fs_lock);
       /* If it was a short write we're done. */
       if (retval != (off_t) write_amt)
         break;
@@ -402,7 +403,6 @@ sys_write (int handle, void *usrc_, unsigned size)
       usrc += retval;
       size -= retval;
     }
-  lock_release (&fs_lock);
  
   return bytes_written;
 }
