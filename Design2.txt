@@ -8,9 +8,9 @@
 
 >> Fill in the names of your group members.
 
-FirstName LastName
-FirstName LastName
-FirstName LastName
+Jordan DeLoach
+Trent Novelly
+Michael Whitehead
 
 ---- PRELIMINARIES ----
 
@@ -36,6 +36,10 @@ FirstName LastName
 >> you arrange for the elements of argv[] to be in the right order?
 >> How do you avoid overflowing the stack page?
 
+For this, the only part we had to implement was reversing the ordering 
+of argument passing. To do this, a simple algorithm for string array 
+reversing was used.
+
 ---- RATIONALE ----
 
 >> A3: Why does Pintos implement strtok_r() but not strtok()?
@@ -43,6 +47,10 @@ FirstName LastName
 >> A4: In Pintos, the kernel separates commands into an executable name
 >> and arguments.  In Unix-like systems, the shell does this
 >> separation.  Identify at least two advantages of the Unix approach.
+
+Two advantages would be it allows more customizability with regards to 
+typing in the command. It could theoretically be a different order, e.g. 
+allowing the shell to customize to some degree.
 
 			     SYSTEM CALLS
 			     ============
@@ -56,6 +64,9 @@ FirstName LastName
 >> B2: Describe how file descriptors are associated with open files.
 >> Are file descriptors unique within the entire OS or just within a
 >> single process?
+
+Unique within a process. They are associated per-process, and each number 
+maps to a file reference.
 
 ---- ALGORITHMS ----
 
@@ -86,12 +97,27 @@ FirstName LastName
 >> paragraphs, describe the strategy or strategies you adopted for
 >> managing these issues.  Give an example.
 
+For managing this, the main way to communicate the error was a thread
+exit with a value of -1. This allows us to realiably exit the thread, 
+while giving some degree of specificity to the error. PintOS, being the 
+simple OS it was, doesn't really have the infrastructure for a more 
+complicated error reporting system. For handling locks, the strategy 
+was to minimize the amount of things happening inside of a lock. Namely
+the main points of failure happen outside of a lock, as we pre-check
+the validity of pointers, values, etc. before we even proceed to do 
+the lock-required work.
+
 ---- SYNCHRONIZATION ----
 
 >> B7: The "exec" system call returns -1 if loading the new executable
 >> fails, so it cannot return before the new executable has completed
 >> loading.  How does your code ensure this?  How is the load
 >> success/failure status passed back to the thread that calls "exec"?
+
+The success/failure is done through the return value, the child PID or 
+-1 depending on success/failure, respectiveley. We did a wait by whiling
+until we got a return from the exec process call before we returned to the
+calling process.
 
 >> B8: Consider parent process P with child process C.  How do you
 >> ensure proper synchronization and avoid race conditions when P
@@ -107,6 +133,10 @@ FirstName LastName
 
 >> B10: What advantages or disadvantages can you see to your design
 >> for file descriptors?
+
+The advantages were not having to pass around pointers, makes it quite
+a bit easier to debug and such. The disadvantage can be it is an arbitrary
+way to hide the real resource (pointer to file).
 
 >> B11: The default tid_t to pid_t mapping is the identity mapping.
 >> If you changed it, what advantages are there to your approach?
